@@ -29,8 +29,9 @@ struct CLIProviderMetadataTests {
     }
 
     @Test func claudeCodeModelCatalog() {
-        #expect(AIProvider.claudeCode.defaultModel == "haiku")
-        #expect(AIProvider.claudeCode.availableModels.contains("haiku"))
+        #expect(AIProvider.claudeCode.defaultModel == "Haiku (Low)")
+        #expect(AIProvider.claudeCode.availableModels.contains("Haiku (Low)"))
+        #expect(AIProvider.claudeCode.availableModels.contains("Opus (High)"))
     }
 
     @Test func antigravityModelCatalog() {
@@ -45,22 +46,47 @@ struct CLIProviderMetadataTests {
 
 struct CLIProviderCommandTests {
 
-    @Test func claudeCodeCommandUsesSelectedModel() {
+    @Test func claudeCodeCommandSplitsModelAndEffort() {
         let command = CLIProviderService.commandTemplate(
             for: .claudeCode,
             binaryPath: "/usr/local/bin/claude",
-            model: "sonnet"
+            model: "Sonnet (High)"
         )
-        #expect(command == "\"/usr/local/bin/claude\" -p --model \"sonnet\" \"$VOICEINK_FULL_PROMPT\"")
+        #expect(command == "\"/usr/local/bin/claude\" -p --model \"sonnet\" --effort high \"$VOICEINK_FULL_PROMPT\"")
     }
 
-    @Test func claudeCodeCommandFallsBackToHaiku() {
+    @Test func claudeCodeCommandFallsBackToHaikuLow() {
         let command = CLIProviderService.commandTemplate(
             for: .claudeCode,
             binaryPath: "/usr/local/bin/claude",
             model: nil
         )
         #expect(command.contains("--model \"haiku\""))
+        #expect(command.contains("--effort low"))
+    }
+
+    @Test func claudeCodeAcceptsLegacyBareModelName() {
+        // A per-mode config saved before effort levels stored just "haiku".
+        let parsed = CLIProviderService.claudeCodeModelAndEffort(from: "haiku")
+        #expect(parsed.model == "haiku")
+        #expect(parsed.effort == "low")
+    }
+
+    @Test func claudeCodeParsesEachCatalogEntry() {
+        for entry in AIProvider.claudeCode.availableModels {
+            let parsed = CLIProviderService.claudeCodeModelAndEffort(from: entry)
+            #expect(["haiku", "sonnet", "opus"].contains(parsed.model))
+            #expect(parsed.effort != nil)
+            #expect(CLIProviderService.validEffortLevels.contains(parsed.effort!))
+        }
+    }
+
+    @Test func effortNormalizationRejectsUnknownLevels() {
+        #expect(CLIProviderService.normalizedEffort("High") == "high")
+        #expect(CLIProviderService.normalizedEffort("xhigh") == "xhigh")
+        #expect(CLIProviderService.normalizedEffort("ludicrous") == nil)
+        #expect(CLIProviderService.normalizedEffort("high; rm -rf ~") == nil)
+        #expect(CLIProviderService.normalizedEffort(nil) == nil)
     }
 
     @Test func antigravityCommandUsesSelectedModel() {

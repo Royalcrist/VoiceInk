@@ -100,7 +100,7 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return "local-cli"
         case .claudeCode:
-            return "haiku"
+            return "Haiku (Low)"
         case .antigravity:
             return "Gemini 3.5 Flash (Low)"
         case .custom:
@@ -166,7 +166,12 @@ enum AIProvider: String, CaseIterable {
         case .localCLI:
             return []
         case .claudeCode:
-            return ["haiku", "sonnet", "opus"]
+            // Model × reasoning effort. Split into --model / --effort when the CLI is called.
+            return [
+                "Haiku (Low)", "Haiku (Medium)", "Haiku (High)",
+                "Sonnet (Low)", "Sonnet (Medium)", "Sonnet (High)",
+                "Opus (Low)", "Opus (Medium)", "Opus (High)"
+            ]
         case .antigravity:
             // Mirrors `agy models`; names are passed to the CLI's --model flag verbatim.
             return [
