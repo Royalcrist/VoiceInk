@@ -104,6 +104,14 @@ enum OnboardingPermissionKind: String, CaseIterable, Identifiable {
     case accessibility
     case screenRecording
 
+    // Screen Recording is intentionally excluded from onboarding: macOS only
+    // registers the app in that privacy pane reliably when the permission is
+    // requested at the moment of use, so ScreenCaptureService asks for it the
+    // first time a mode actually needs screen context.
+    static var allCases: [OnboardingPermissionKind] {
+        [.microphone, .accessibility]
+    }
+
     var id: String { rawValue }
 
     static var required: [OnboardingPermissionKind] {

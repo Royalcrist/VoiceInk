@@ -48,6 +48,13 @@ struct MenuBarView: View {
 
             Divider()
 
+            Toggle(isOn: Binding(
+                get: { modeManager.isAIFormattingEnabled },
+                set: { modeManager.setAIFormattingEnabled($0) }
+            )) {
+                Text("AI Formatting")
+            }
+
             Menu {
                 ForEach(modeManager.enabledConfigurations) { config in
                     Button {

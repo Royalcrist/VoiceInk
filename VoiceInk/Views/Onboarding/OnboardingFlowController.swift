@@ -491,13 +491,16 @@ final class OnboardingFlowController {
     }
 
     func activateCleanTranscriptionMode() {
-        guard let cleanTemplate = StarterModeCatalog.templates.first(where: { $0.kind == .clean }),
-              let cleanConfig = ModeManager.shared.getConfiguration(with: cleanTemplate.id) else {
+        // AI formatting is on by default: finishing onboarding lands on the Enhancement
+        // starter mode. The menu bar's "AI Formatting" toggle switches back to plain
+        // Dictation at any time.
+        guard let enhanceTemplate = StarterModeCatalog.templates.first(where: { $0.kind == .enhance }),
+              let enhanceConfig = ModeManager.shared.getConfiguration(with: enhanceTemplate.id) else {
             return
         }
 
-        ModeManager.shared.setAsDefault(configId: cleanConfig.id)
-        ModeManager.shared.setActiveConfiguration(cleanConfig)
+        ModeManager.shared.setAsDefault(configId: enhanceConfig.id)
+        ModeManager.shared.setActiveConfiguration(enhanceConfig)
     }
 
     private func applyDefaultMode(for step: OnboardingExperienceStep) {

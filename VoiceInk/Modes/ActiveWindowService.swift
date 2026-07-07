@@ -35,8 +35,11 @@ class ActiveWindowService: ObservableObject {
         guard shouldApply() else { return Task {} }
         currentApplication = frontmostApp
 
+        // App-specific rules win; otherwise keep whatever mode is currently active so a
+        // manual pick from the menu bar survives the next recording instead of being
+        // reset to the default mode.
         let quickConfig = ModeManager.shared.getConfigurationForApp(bundleIdentifier)
-            ?? ModeManager.shared.getDefaultConfiguration()
+            ?? ModeManager.shared.currentEffectiveConfiguration
 
         if let quickConfig {
             ModeManager.shared.setActiveConfiguration(quickConfig)

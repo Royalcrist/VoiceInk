@@ -57,21 +57,21 @@ enum StarterModeCatalog {
             usesAIEnhancement: false,
             useSelectedTextContext: false,
             useScreenCapture: false,
-            isDefault: true
+            isDefault: false
         ),
         StarterModeTemplate(
             kind: .enhance,
             id: UUID(uuidString: "10000000-0000-0000-0000-000000000002")!,
             name: "Enhancement",
             icon: .symbol("sparkles"),
-            description: "Clean up dictated text while preserving your meaning.",
-            guidance: "Use this for everyday writing when you want grammar, flow, and light formatting improved before the result is pasted.",
+            description: "Clean up dictated text — or rewrite selected text with a spoken instruction.",
+            guidance: "The everyday default: grammar, flow, and light formatting are improved before the result is pasted. When text is selected, your dictation is treated as an instruction to rewrite that selection.",
             promptId: PromptTemplates.defaultPromptId,
             outputMode: .paste,
             usesAIEnhancement: true,
             useSelectedTextContext: true,
             useScreenCapture: true,
-            isDefault: false
+            isDefault: true
         ),
         StarterModeTemplate(
             kind: .email,

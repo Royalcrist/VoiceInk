@@ -102,7 +102,7 @@ enum AIProvider: String, CaseIterable {
         case .claudeCode:
             return "haiku"
         case .antigravity:
-            return "default"
+            return "Gemini 3.5 Flash (Low)"
         case .custom:
             return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
@@ -168,7 +168,17 @@ enum AIProvider: String, CaseIterable {
         case .claudeCode:
             return ["haiku", "sonnet", "opus"]
         case .antigravity:
-            return []
+            // Mirrors `agy models`; names are passed to the CLI's --model flag verbatim.
+            return [
+                "Gemini 3.5 Flash (Low)",
+                "Gemini 3.5 Flash (Medium)",
+                "Gemini 3.5 Flash (High)",
+                "Gemini 3.1 Pro (Low)",
+                "Gemini 3.1 Pro (High)",
+                "Claude Sonnet 4.6 (Thinking)",
+                "Claude Opus 4.6 (Thinking)",
+                "GPT-OSS 120B (Medium)"
+            ]
         case .custom:
             return CustomAIProviderManager.shared.availableModelNames
         case .openRouter:

@@ -8,7 +8,6 @@ struct LocalEnhancementProviderManagementView: View {
     @State private var isClaudeCodeExpanded = false
     @State private var isAntigravityExpanded = false
     @State private var isLocalCLIExpanded = false
-    @State private var selectedClaudeCodeModel = ""
     @State private var ollamaBaseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
     @State private var selectedOllamaModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var ollamaUserRefreshError: String?
@@ -82,7 +81,6 @@ struct LocalEnhancementProviderManagementView: View {
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
-            selectedClaudeCodeModel = aiService.selectedModel(for: .claudeCode)
             syncLocalCLIStateFromService()
         }
     }
@@ -114,22 +112,25 @@ struct LocalEnhancementProviderManagementView: View {
                     }
                 }
 
-                if provider == .claudeCode {
+                if !provider.availableModels.isEmpty {
                     Divider()
                         .padding(.leading, LocalProviderMetrics.labelWidth + 12)
 
                     LocalProviderFormRow(title: "Model") {
-                        Picker("Model", selection: $selectedClaudeCodeModel) {
-                            ForEach(AIProvider.claudeCode.availableModels, id: \.self) { model in
+                        Picker(
+                            "Model",
+                            selection: Binding(
+                                get: { aiService.selectedModel(for: provider) },
+                                set: { aiService.selectModel($0, for: provider) }
+                            )
+                        ) {
+                            ForEach(provider.availableModels, id: \.self) { model in
                                 Text(model).tag(model)
                             }
                         }
                         .pickerStyle(.menu)
                         .labelsHidden()
-                        .frame(maxWidth: 160, alignment: .leading)
-                        .onChange(of: selectedClaudeCodeModel) { _, newValue in
-                            aiService.selectModel(newValue, for: .claudeCode)
-                        }
+                        .frame(maxWidth: 260, alignment: .leading)
                     }
                 }
 

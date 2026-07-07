@@ -30,6 +30,34 @@ enum PromptTemplates {
     static var seedPrompts: [CustomPrompt] {
         all.map { $0.toCustomPrompt(id: $0.id) }
     }
+
+    /// Earlier revisions of seeded prompt texts, keyed by prompt id. When a stored seeded
+    /// prompt still matches one of these verbatim (the user never edited it), it is
+    /// upgraded in place to the current template text.
+    private static let legacyPromptTexts: [UUID: [String]] = [
+        defaultPromptId: [
+            """
+            Polish the dictated speech in <USER_MESSAGE> into clean, general-purpose text.
+
+            # Rules
+            - Use readable paragraphs and conventional abbreviations when helpful.
+            - Prefer a clean, neutral style unless the dictated speech clearly implies a different tone.
+            """
+        ]
+    ]
+
+    static func upgradedSeedPrompts(in prompts: [CustomPrompt]) -> [CustomPrompt] {
+        var upgraded = prompts
+        for (index, prompt) in upgraded.enumerated() {
+            guard let legacyTexts = legacyPromptTexts[prompt.id],
+                  legacyTexts.contains(prompt.promptText),
+                  let seed = seedPrompts.first(where: { $0.id == prompt.id }) else {
+                continue
+            }
+            upgraded[index] = seed
+        }
+        return upgraded
+    }
     
     static func createTemplatePrompts() -> [TemplatePrompt] {
         [
@@ -40,6 +68,8 @@ enum PromptTemplates {
                     Polish the dictated speech in <USER_MESSAGE> into clean, general-purpose text.
 
                     # Rules
+                    - If <CURRENTLY_SELECTED_TEXT> is present and the dictated speech reads as an instruction about it (for example "make this shorter", "translate this to Spanish", "fix the grammar"), rewrite the selected text following that instruction and return only the rewritten selection.
+                    - Otherwise, polish the dictated speech itself while preserving its meaning, tone, and intent.
                     - Use readable paragraphs and conventional abbreviations when helpful.
                     - Prefer a clean, neutral style unless the dictated speech clearly implies a different tone.
                     """,

@@ -99,4 +99,6 @@ Icon
 .AppleDesktop
 Network Trash Folder
 Temporary Items
-.apdisk 
+.apdisk .dmg-build/
+.dmg-staging/
+VoiceInk.dmg

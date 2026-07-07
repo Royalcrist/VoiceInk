@@ -368,6 +368,28 @@ class ModeManager: ObservableObject {
 
         return getDefaultConfiguration()
     }
+
+    // The single "AI Formatting" switch shown in the menu bar: on = the Enhancement
+    // starter mode becomes default + active, off = plain Dictation.
+    var isAIFormattingEnabled: Bool {
+        currentEffectiveConfiguration?.isAIEnhancementEnabled ?? false
+    }
+
+    func setAIFormattingEnabled(_ enabled: Bool) {
+        let starterKind: StarterModeKind = enabled ? .enhance : .clean
+        if let template = StarterModeCatalog.templates.first(where: { $0.kind == starterKind }),
+           let config = configurations.first(where: { $0.id == template.id && $0.isEnabled }) {
+            setAsDefault(configId: config.id)
+            setActiveConfiguration(config)
+            return
+        }
+
+        // Starter mode was deleted or disabled; fall back to any mode with the requested behavior.
+        if let fallback = configurations.first(where: { $0.isEnabled && $0.isAIEnhancementEnabled == enabled }) {
+            setAsDefault(configId: fallback.id)
+            setActiveConfiguration(fallback)
+        }
+    }
     
     func hasDefaultConfiguration() -> Bool {
         return configurations.contains { $0.isDefault }

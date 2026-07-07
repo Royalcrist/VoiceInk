@@ -56,18 +56,20 @@ final class CLIProviderService {
         switch provider {
         case .claudeCode:
             let resolvedModel = sanitizedModelName(model) ?? provider.defaultModel
-            return "\"\(binaryPath)\" -p --model \(resolvedModel) \"$VOICEINK_FULL_PROMPT\""
+            return "\"\(binaryPath)\" -p --model \"\(resolvedModel)\" \"$VOICEINK_FULL_PROMPT\""
         case .antigravity:
-            return "\"\(binaryPath)\" -p \"$VOICEINK_FULL_PROMPT\""
+            let resolvedModel = sanitizedModelName(model) ?? provider.defaultModel
+            return "\"\(binaryPath)\" -p --model \"\(resolvedModel)\" \"$VOICEINK_FULL_PROMPT\""
         default:
             return ""
         }
     }
 
-    /// Model names are interpolated into a shell command, so only pass through safe identifiers.
+    /// Model names are interpolated (double-quoted) into a shell command, so only pass
+    /// through names built from a safe character set — no quotes, dollars, or backticks.
     static func sanitizedModelName(_ model: String?) -> String? {
         guard let model, !model.isEmpty else { return nil }
-        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789._-")
+        let allowed = CharacterSet(charactersIn: "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ()._-")
         guard model.unicodeScalars.allSatisfy({ allowed.contains($0) }) else { return nil }
         return model
     }

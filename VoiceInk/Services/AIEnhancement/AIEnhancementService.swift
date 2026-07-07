@@ -42,7 +42,7 @@ class AIEnhancementService: ObservableObject {
 
         if let savedPromptsData = UserDefaults.standard.data(forKey: "customPrompts"),
            let decodedPrompts = try? JSONDecoder().decode([CustomPrompt].self, from: savedPromptsData) {
-            self.customPrompts = decodedPrompts
+            self.customPrompts = PromptTemplates.upgradedSeedPrompts(in: decodedPrompts)
         } else {
             self.customPrompts = []
         }

@@ -40,6 +40,13 @@ class ScreenCaptureService: ObservableObject {
     func captureAndExtractText() async -> String? {
         guard !isCapturing else { return nil }
 
+        // Screen Recording is requested here, at the moment of first use, instead of
+        // during onboarding — macOS registers the app in the privacy pane on request.
+        guard CGPreflightScreenCaptureAccess() else {
+            _ = await Self.requestScreenCapturePermissionRegistration()
+            return nil
+        }
+
         isCapturing = true
         defer {
             isCapturing = false

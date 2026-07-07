@@ -31,7 +31,15 @@ struct CLIProviderMetadataTests {
     @Test func claudeCodeModelCatalog() {
         #expect(AIProvider.claudeCode.defaultModel == "haiku")
         #expect(AIProvider.claudeCode.availableModels.contains("haiku"))
-        #expect(AIProvider.antigravity.availableModels.isEmpty)
+    }
+
+    @Test func antigravityModelCatalog() {
+        #expect(AIProvider.antigravity.defaultModel == "Gemini 3.5 Flash (Low)")
+        #expect(AIProvider.antigravity.availableModels.contains("Gemini 3.1 Pro (High)"))
+        // Every catalog entry must survive sanitization or it could never be used.
+        for model in AIProvider.antigravity.availableModels {
+            #expect(CLIProviderService.sanitizedModelName(model) == model)
+        }
     }
 }
 
@@ -43,7 +51,7 @@ struct CLIProviderCommandTests {
             binaryPath: "/usr/local/bin/claude",
             model: "sonnet"
         )
-        #expect(command == "\"/usr/local/bin/claude\" -p --model sonnet \"$VOICEINK_FULL_PROMPT\"")
+        #expect(command == "\"/usr/local/bin/claude\" -p --model \"sonnet\" \"$VOICEINK_FULL_PROMPT\"")
     }
 
     @Test func claudeCodeCommandFallsBackToHaiku() {
@@ -52,26 +60,37 @@ struct CLIProviderCommandTests {
             binaryPath: "/usr/local/bin/claude",
             model: nil
         )
-        #expect(command.contains("--model haiku"))
+        #expect(command.contains("--model \"haiku\""))
     }
 
-    @Test func antigravityCommandIgnoresModel() {
+    @Test func antigravityCommandUsesSelectedModel() {
         let command = CLIProviderService.commandTemplate(
             for: .antigravity,
             binaryPath: "/Users/me/.local/bin/agy",
-            model: "anything"
+            model: "Gemini 3.1 Pro (High)"
         )
-        #expect(command == "\"/Users/me/.local/bin/agy\" -p \"$VOICEINK_FULL_PROMPT\"")
+        #expect(command == "\"/Users/me/.local/bin/agy\" -p --model \"Gemini 3.1 Pro (High)\" \"$VOICEINK_FULL_PROMPT\"")
+    }
+
+    @Test func antigravityCommandFallsBackToFastFlash() {
+        let command = CLIProviderService.commandTemplate(
+            for: .antigravity,
+            binaryPath: "/Users/me/.local/bin/agy",
+            model: nil
+        )
+        #expect(command.contains("--model \"Gemini 3.5 Flash (Low)\""))
     }
 
     @Test func unsafeModelNamesAreRejected() {
         #expect(CLIProviderService.sanitizedModelName("haiku") == "haiku")
         #expect(CLIProviderService.sanitizedModelName("claude-haiku-4-5") == "claude-haiku-4-5")
+        #expect(CLIProviderService.sanitizedModelName("Gemini 3.5 Flash (Low)") == "Gemini 3.5 Flash (Low)")
         #expect(CLIProviderService.sanitizedModelName(nil) == nil)
         #expect(CLIProviderService.sanitizedModelName("") == nil)
         #expect(CLIProviderService.sanitizedModelName("haiku; rm -rf ~") == nil)
         #expect(CLIProviderService.sanitizedModelName("$(whoami)") == nil)
-        #expect(CLIProviderService.sanitizedModelName("a b") == nil)
+        #expect(CLIProviderService.sanitizedModelName("model\"; say pwned; \"") == nil)
+        #expect(CLIProviderService.sanitizedModelName("model`id`") == nil)
     }
 
     @Test func unsafeModelFallsBackToDefaultInCommand() {
@@ -80,7 +99,7 @@ struct CLIProviderCommandTests {
             binaryPath: "/usr/local/bin/claude",
             model: "haiku\" && say pwned && \""
         )
-        #expect(command.contains("--model haiku "))
+        #expect(command.contains("--model \"haiku\""))
         #expect(!command.contains("pwned"))
     }
 }
