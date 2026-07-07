@@ -322,9 +322,15 @@ final class OnboardingFlowController {
     }
 
     func refreshAPIVerification() {
-        coordinator.isSelectedAPIProviderVerified = APIKeyManager.shared.hasAPIKey(
-            forProvider: coordinator.selectedOnboardingProvider.rawValue
-        )
+        let provider = coordinator.selectedOnboardingProvider
+
+        if provider.isSubscriptionCLIProvider {
+            coordinator.isSelectedAPIProviderVerified = coordinator.detectedSubscriptionCLIProviders.contains(provider)
+        } else {
+            coordinator.isSelectedAPIProviderVerified = APIKeyManager.shared.hasAPIKey(
+                forProvider: provider.rawValue
+            )
+        }
 
         if coordinator.isSelectedAPIProviderVerified {
             coordinator.hasSkippedAPISetup = false
@@ -388,7 +394,12 @@ final class OnboardingFlowController {
 
         coordinator.storedOnboardingAIProvider = provider.rawValue
 
-        if APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue) {
+        if provider.isSubscriptionCLIProvider {
+            if aiService.cliProviderIsAvailable(provider) {
+                aiService.selectedProvider = provider
+                aiService.selectModel(provider.defaultModel, for: provider)
+            }
+        } else if APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue) {
             aiService.selectedProvider = provider
             aiService.selectModel(provider.defaultModel, for: provider)
         }

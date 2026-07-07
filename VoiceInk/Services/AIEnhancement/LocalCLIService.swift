@@ -85,7 +85,7 @@ final class LocalCLIService {
         }
 
         let fullPrompt = Self.makeFullPrompt(systemPrompt: systemPrompt, userPrompt: userPrompt)
-        return try await executeCommand(
+        return try await Self.executeCommand(
             commandTemplate: commandTemplate,
             systemPrompt: systemPrompt,
             userPrompt: userPrompt,
@@ -108,7 +108,7 @@ final class LocalCLIService {
         """
     }
 
-    private func executeCommand(
+    static func executeCommand(
         commandTemplate: String,
         systemPrompt: String,
         userPrompt: String,

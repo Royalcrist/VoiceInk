@@ -42,5 +42,21 @@ struct OnboardingModelScreen: View {
                 onPrimary: onContinue
             )
         }
+        .onAppear {
+            startRecommendedDownloadIfNeeded()
+        }
+        .onChange(of: setupKind) { _, _ in
+            startRecommendedDownloadIfNeeded()
+        }
+    }
+
+    // Zero-manual-downloads: the recommended local model starts downloading as soon as
+    // this step appears, instead of waiting for a button press.
+    private func startRecommendedDownloadIfNeeded() {
+        guard setupKind == .local,
+              let localModel,
+              !isLocalDownloaded,
+              !isLocalDownloading else { return }
+        onDownload(localModel)
     }
 }

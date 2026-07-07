@@ -216,8 +216,19 @@ final class OnboardingCoordinator: ObservableObject {
         return !trimmedText.isEmpty
     }
 
+    // Subscription CLI tools already installed on this Mac (Claude Code, Antigravity).
+    // Detected once per onboarding session; they need no API key.
+    lazy var detectedSubscriptionCLIProviders: [AIProvider] = {
+        [.claudeCode, .antigravity].filter { provider in
+            guard let executableName = provider.cliExecutableName else { return false }
+            return CLIProviderService.findExecutable(named: executableName) != nil
+        }
+    }()
+
     var onboardingProviderOptions: [AIProvider] {
         let preferredOrder: [AIProvider] = [
+            .claudeCode,
+            .antigravity,
             .groq,
             .cerebras,
             .gemini,
@@ -227,9 +238,10 @@ final class OnboardingCoordinator: ObservableObject {
             .mistral
         ]
 
+        let detectedCLIProviders = detectedSubscriptionCLIProviders
         let supportedProviders = AIProvider.allCases.filter { provider in
             provider.supportsEnhancement &&
-                provider.requiresAPIKey &&
+                (provider.requiresAPIKey || detectedCLIProviders.contains(provider)) &&
                 provider != .custom
         }
 
@@ -344,6 +356,11 @@ final class OnboardingCoordinator: ObservableObject {
         if let storedProvider = AIProvider(rawValue: storedOnboardingAIProvider),
            onboardingProviderOptions.contains(storedProvider) {
             return storedProvider
+        }
+
+        // A detected subscription CLI works instantly with no API key, so offer it first.
+        if let detectedCLIProvider = detectedSubscriptionCLIProviders.first {
+            return detectedCLIProvider
         }
 
         if onboardingProviderOptions.contains(.groq) {

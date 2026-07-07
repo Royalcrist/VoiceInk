@@ -1,0 +1,39 @@
+WELCOME TO VOICEINK (free build)
+================================
+
+Voice-to-text for your Mac. 100% private: your voice never leaves
+your computer.
+
+HOW TO INSTALL (2 steps)
+------------------------
+1. Drag "VoiceInk" onto the "Applications" folder in this window.
+2. Open your Applications folder, RIGHT-CLICK VoiceInk and choose
+   "Open", then click "Open" again in the dialog.
+
+   Why right-click? This free build isn't registered with Apple
+   (that costs $99/year), so macOS shows a warning the FIRST time
+   only. Right-click -> Open tells your Mac you trust it. After
+   this one time, it opens normally forever.
+
+FIRST LAUNCH
+------------
+The app walks you through everything:
+- Allow the Microphone (so it can hear you)
+- Allow Accessibility (so it can type the text for you)
+- The recommended AI model downloads automatically (~600 MB, one time)
+
+Then just press the shortcut, speak, and your words appear wherever
+your cursor is. Works in every app, even without internet.
+
+REQUIREMENTS
+------------
+- macOS 14.4 or newer, Apple Silicon (M1 or newer) recommended.
+
+QUESTIONS / SOURCE CODE
+-----------------------
+This app is free open-source software (GPL v3), based on VoiceInk
+by Prakash Joshi Pax. Source code for this build:
+https://github.com/Royalcrist/VoiceInk
+
+If you find it useful, consider supporting the original developer
+by buying the official version at https://tryvoiceink.com

@@ -5,7 +5,10 @@ struct LocalEnhancementProviderManagementView: View {
     @EnvironmentObject private var aiService: AIService
 
     @State private var isOllamaExpanded = false
+    @State private var isClaudeCodeExpanded = false
+    @State private var isAntigravityExpanded = false
     @State private var isLocalCLIExpanded = false
+    @State private var selectedClaudeCodeModel = ""
     @State private var ollamaBaseURL = UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
     @State private var selectedOllamaModel = UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
     @State private var ollamaUserRefreshError: String?
@@ -21,7 +24,7 @@ struct LocalEnhancementProviderManagementView: View {
         VStack(alignment: .leading, spacing: 10) {
             ProviderSectionHeader(
                 title: "Local & CLI Providers",
-                subtitle: "Run enhancement with Ollama on this Mac, or send it to any CLI command."
+                subtitle: "Run enhancement with Ollama on this Mac, your Claude or Google subscription, or any CLI command."
             )
             .padding(.top, 8)
 
@@ -34,6 +37,32 @@ struct LocalEnhancementProviderManagementView: View {
                     isExpanded: $isOllamaExpanded
                 ) {
                     ollamaConfiguration
+                }
+
+                Divider()
+                    .padding(.leading, 58)
+
+                LocalProviderDisclosureRow(
+                    title: Text(verbatim: "Claude Code"),
+                    subtitle: Text("Your Claude subscription, no API key"),
+                    systemImage: "apple.terminal",
+                    statusTitle: cliProviderStatusTitle(.claudeCode),
+                    isExpanded: $isClaudeCodeExpanded
+                ) {
+                    cliProviderConfiguration(.claudeCode)
+                }
+
+                Divider()
+                    .padding(.leading, 58)
+
+                LocalProviderDisclosureRow(
+                    title: Text(verbatim: "Antigravity"),
+                    subtitle: Text("Your Google subscription, no API key"),
+                    systemImage: "sparkle",
+                    statusTitle: cliProviderStatusTitle(.antigravity),
+                    isExpanded: $isAntigravityExpanded
+                ) {
+                    cliProviderConfiguration(.antigravity)
                 }
 
                 Divider()
@@ -53,7 +82,75 @@ struct LocalEnhancementProviderManagementView: View {
         }
         .onAppear {
             selectedOllamaModel = aiService.selectedModel(for: .ollama)
+            selectedClaudeCodeModel = aiService.selectedModel(for: .claudeCode)
             syncLocalCLIStateFromService()
+        }
+    }
+
+    private func cliProviderStatusTitle(_ provider: AIProvider) -> Text {
+        aiService.cliProviderIsAvailable(provider) ? Text("Detected") : Text("Not installed")
+    }
+
+    @ViewBuilder
+    private func cliProviderConfiguration(_ provider: AIProvider) -> some View {
+        LocalProviderExpandedContent {
+            if let binaryPath = aiService.cliProviderBinaryPath(provider) {
+                LocalProviderFormRow(title: "Binary") {
+                    HStack(spacing: 8) {
+                        Text(binaryPath)
+                            .font(.system(size: 11, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+
+                        Button {
+                            aiService.refreshCLIProviderDetection()
+                        } label: {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .help("Re-detect")
+                    }
+                }
+
+                if provider == .claudeCode {
+                    Divider()
+                        .padding(.leading, LocalProviderMetrics.labelWidth + 12)
+
+                    LocalProviderFormRow(title: "Model") {
+                        Picker("Model", selection: $selectedClaudeCodeModel) {
+                            ForEach(AIProvider.claudeCode.availableModels, id: \.self) { model in
+                                Text(model).tag(model)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: 160, alignment: .leading)
+                        .onChange(of: selectedClaudeCodeModel) { _, newValue in
+                            aiService.selectModel(newValue, for: .claudeCode)
+                        }
+                    }
+                }
+
+                Text("Runs the official CLI on this Mac and bills your existing subscription. No API key needed.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text("Install the '\(provider.cliExecutableName ?? "")' command line tool to use \(provider.rawValue) with your existing subscription, then press re-detect.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    aiService.refreshCLIProviderDetection()
+                } label: {
+                    Label("Re-detect", systemImage: "arrow.clockwise")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
         }
     }
 

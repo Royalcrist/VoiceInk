@@ -239,6 +239,36 @@ struct APIKeyManagementView: View {
                             .font(.caption)
                             .foregroundColor(AppTheme.Status.warningStrong)
                     }
+                } else if aiService.selectedProvider.isSubscriptionCLIProvider {
+                    let provider = aiService.selectedProvider
+                    if let binaryPath = aiService.cliProviderBinaryPath(provider) {
+                        HStack {
+                            Text(String(format: String(localized: "Detected: %@"), binaryPath))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                            Spacer()
+                            Button {
+                                aiService.refreshCLIProviderDetection()
+                            } label: {
+                                Image(systemName: "arrow.clockwise")
+                            }
+                            .help("Re-detect")
+                        }
+                        Text("Uses your existing \(provider == .claudeCode ? "Claude" : "Google") subscription through the official CLI. No API key needed.")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    } else {
+                        Text("\(provider.rawValue) was not found on this Mac. Install the '\(provider.cliExecutableName ?? "")' command line tool, then press re-detect.")
+                            .font(.caption)
+                            .foregroundColor(AppTheme.Status.warningStrong)
+                        Button {
+                            aiService.refreshCLIProviderDetection()
+                        } label: {
+                            Label("Re-detect", systemImage: "arrow.clockwise")
+                        }
+                    }
                 } else if aiService.selectedProvider == .custom {
                     Text("Manage custom enhancement models in the Custom tab.")
                         .font(.caption)

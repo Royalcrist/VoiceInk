@@ -75,7 +75,7 @@ class AIEnhancementService: ObservableObject {
         guard configuration.prompt != nil else { return false }
         guard let provider = configuration.provider else { return false }
 
-        if provider == .localCLI || provider == .ollama {
+        if provider == .localCLI || provider == .ollama || provider.isSubscriptionCLIProvider {
             return true
         }
 
@@ -230,6 +230,24 @@ class AIEnhancementService: ObservableObject {
             } catch {
                 if let localError = error as? LocalCLIError {
                     throw EnhancementError.customError(localError.errorDescription ?? "An unknown Local CLI error occurred.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
+        if provider.isSubscriptionCLIProvider {
+            do {
+                let result = try await aiService.enhanceWithCLIProvider(
+                    provider,
+                    model: configuration.modelName,
+                    systemPrompt: systemMessage,
+                    userPrompt: formattedText
+                )
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let localError = error as? LocalCLIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown \(provider.rawValue) error occurred.")
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }

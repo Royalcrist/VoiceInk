@@ -16,9 +16,26 @@ enum AIProvider: String, CaseIterable {
     case assemblyAI = "AssemblyAI"
     case ollama = "Ollama"
     case localCLI = "Local CLI"
+    case claudeCode = "Claude Code"
+    case antigravity = "Antigravity"
     case custom = "Custom"
-    
-    
+
+    /// Providers backed by a locally installed subscription CLI tool (no API key).
+    var isSubscriptionCLIProvider: Bool {
+        self == .claudeCode || self == .antigravity
+    }
+
+    var cliExecutableName: String? {
+        switch self {
+        case .claudeCode:
+            return "claude"
+        case .antigravity:
+            return "agy"
+        default:
+            return nil
+        }
+    }
+
     var baseURL: String {
         switch self {
         case .cerebras:
@@ -47,7 +64,7 @@ enum AIProvider: String, CaseIterable {
             return "https://api.assemblyai.com/v2/transcript"
         case .ollama:
             return UserDefaults.standard.string(forKey: "ollamaBaseURL") ?? "http://localhost:11434"
-        case .localCLI:
+        case .localCLI, .claudeCode, .antigravity:
             return ""
         case .custom:
             return UserDefaults.standard.string(forKey: "customProviderBaseURL") ?? ""
@@ -82,6 +99,10 @@ enum AIProvider: String, CaseIterable {
             return UserDefaults.standard.string(forKey: "ollamaSelectedModel") ?? "mistral"
         case .localCLI:
             return "local-cli"
+        case .claudeCode:
+            return "haiku"
+        case .antigravity:
+            return "default"
         case .custom:
             return CustomAIProviderManager.shared.defaultModelName
         case .openRouter:
@@ -144,6 +165,10 @@ enum AIProvider: String, CaseIterable {
             return []
         case .localCLI:
             return []
+        case .claudeCode:
+            return ["haiku", "sonnet", "opus"]
+        case .antigravity:
+            return []
         case .custom:
             return CustomAIProviderManager.shared.availableModelNames
         case .openRouter:
@@ -153,7 +178,7 @@ enum AIProvider: String, CaseIterable {
     
     var requiresAPIKey: Bool {
         switch self {
-        case .ollama, .localCLI:
+        case .ollama, .localCLI, .claudeCode, .antigravity:
             return false
         default:
             return true
@@ -201,7 +226,7 @@ class AIService: ObservableObject {
                 }
             } else {
                 self.apiKey = ""
-                self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+                self.isAPIKeyValid = noKeyProviderIsReady(selectedProvider)
                 if selectedProvider == .ollama {
                     Task {
                         await refreshOllamaAvailability()
@@ -216,6 +241,7 @@ class AIService: ObservableObject {
     private let userDefaults = UserDefaults.standard
     private lazy var ollamaService = OllamaService()
     private lazy var localCLIService = LocalCLIService()
+    private lazy var cliProviderService = CLIProviderService()
     private var apiKeyChangeObserver: NSObjectProtocol?
     
     @Published private var openRouterModels: [String] = []
@@ -233,6 +259,8 @@ class AIService: ObservableObject {
                 return ollamaService.isConnected
             } else if provider == .localCLI {
                 return localCLIService.isConfigured
+            } else if provider.isSubscriptionCLIProvider {
+                return cliProviderService.isAvailable(provider)
             } else if provider.requiresAPIKey {
                 return APIKeyManager.shared.hasAPIKey(forProvider: provider.rawValue)
             }
@@ -301,7 +329,7 @@ class AIService: ObservableObject {
                 self.isAPIKeyValid = true
             }
         } else {
-            self.isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+            self.isAPIKeyValid = noKeyProviderIsReady(selectedProvider)
         }
 
         loadSavedModelSelections()
@@ -345,10 +373,20 @@ class AIService: ObservableObject {
             }
         } else {
             apiKey = ""
-            isAPIKeyValid = selectedProvider == .localCLI ? localCLIService.isConfigured : true
+            isAPIKeyValid = noKeyProviderIsReady(selectedProvider)
         }
     }
-    
+
+    private func noKeyProviderIsReady(_ provider: AIProvider) -> Bool {
+        if provider == .localCLI {
+            return localCLIService.isConfigured
+        }
+        if provider.isSubscriptionCLIProvider {
+            return cliProviderService.isAvailable(provider)
+        }
+        return true
+    }
+
     private func loadSavedModelSelections() {
         for provider in AIProvider.allCases {
             let key = "\(provider.rawValue)SelectedModel"
@@ -608,6 +646,27 @@ class AIService: ObservableObject {
 
     func enhanceWithLocalCLI(systemPrompt: String, userPrompt: String) async throws -> String {
         try await localCLIService.enhance(systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    func enhanceWithCLIProvider(_ provider: AIProvider, model: String?, systemPrompt: String, userPrompt: String) async throws -> String {
+        try await cliProviderService.enhance(provider: provider, model: model, systemPrompt: systemPrompt, userPrompt: userPrompt)
+    }
+
+    func cliProviderIsAvailable(_ provider: AIProvider) -> Bool {
+        cliProviderService.isAvailable(provider)
+    }
+
+    func cliProviderBinaryPath(_ provider: AIProvider) -> String? {
+        cliProviderService.binaryPath(for: provider)
+    }
+
+    func refreshCLIProviderDetection() {
+        cliProviderService.refreshDetection()
+        if selectedProvider.isSubscriptionCLIProvider {
+            isAPIKeyValid = cliProviderService.isAvailable(selectedProvider)
+        }
+        objectWillChange.send()
+        NotificationCenter.default.post(name: .AppSettingsDidChange, object: nil)
     }
 
     private func refreshLocalCLIConfigurationState() {

@@ -181,7 +181,7 @@ enum ModeRuntimeResolver {
     ) -> String? {
         guard let provider else { return nil }
 
-        if provider == .localCLI {
+        if provider == .localCLI || provider == .antigravity {
             return nil
         }
 

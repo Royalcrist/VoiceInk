@@ -47,6 +47,13 @@ extension AIService {
                 systemPrompt: systemPrompt ?? "",
                 userPrompt: chatPrompt(from: messages)
             )
+        case .claudeCode, .antigravity:
+            result = try await enhanceWithCLIProvider(
+                provider,
+                model: resolvedModel,
+                systemPrompt: systemPrompt ?? "",
+                userPrompt: chatPrompt(from: messages)
+            )
         default:
             guard let baseURL = URL(string: provider.baseURL) else {
                 throw EnhancementError.notConfigured

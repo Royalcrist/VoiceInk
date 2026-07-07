@@ -20,7 +20,10 @@ struct AIProviderVerificationCard: View {
     }
 
     private var isSelectedProviderConnected: Bool {
-        APIKeyManager.shared.hasAPIKey(forProvider: selectedProvider.rawValue)
+        if selectedProvider.isSubscriptionCLIProvider {
+            return aiService.cliProviderIsAvailable(selectedProvider)
+        }
+        return APIKeyManager.shared.hasAPIKey(forProvider: selectedProvider.rawValue)
     }
 
     private var shouldShowAPIKeyEntry: Bool {
@@ -180,9 +183,16 @@ struct AIProviderVerificationCard: View {
                     .foregroundColor(AppTheme.Status.positive)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Connection verified.")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(AppTheme.Text.primary)
+                    if selectedProvider.isSubscriptionCLIProvider {
+                        Text("Detected on this Mac. Uses your existing subscription — no API key needed.")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(AppTheme.Text.primary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        Text("Connection verified.")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundColor(AppTheme.Text.primary)
+                    }
                 }
             }
 
@@ -235,9 +245,13 @@ struct AIProviderVerificationCard: View {
 
     private func refreshVerificationState() {
         verificationSucceeded = isSelectedProviderConnected
-        verificationMessage = verificationSucceeded
-            ? String(format: String(localized: "%@ connection verified."), selectedProvider.rawValue)
-            : nil
+        if verificationSucceeded {
+            verificationMessage = selectedProvider.isSubscriptionCLIProvider
+                ? String(format: String(localized: "%@ detected — no API key needed."), selectedProvider.rawValue)
+                : String(format: String(localized: "%@ connection verified."), selectedProvider.rawValue)
+        } else {
+            verificationMessage = nil
+        }
         verificationDetailMessage = nil
 
         if verificationSucceeded {
@@ -360,6 +374,8 @@ private struct ProviderChoiceButton: View {
 
                     if provider == .groq {
                         RecommendedProviderPill()
+                    } else if provider.isSubscriptionCLIProvider {
+                        ProviderTagPill(text: "No API key")
                     }
                 }
 
@@ -380,6 +396,29 @@ private struct ProviderChoiceButton: View {
         .help(provider.rawValue)
     }
 
+}
+
+private struct ProviderTagPill: View {
+    let text: LocalizedStringKey
+
+    init(text: LocalizedStringKey) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.system(size: 9, weight: .semibold))
+            .foregroundColor(AppTheme.Text.muted)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(Capsule().fill(AppTheme.Surface.control.opacity(0.55)))
+            .overlay(
+                Capsule()
+                    .stroke(AppTheme.Border.control.opacity(0.28), lineWidth: 1)
+            )
+    }
 }
 
 private struct RecommendedProviderPill: View {

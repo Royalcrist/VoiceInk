@@ -3,8 +3,11 @@ DEPS_DIR := $(HOME)/VoiceInk-Dependencies
 WHISPER_CPP_DIR := $(DEPS_DIR)/whisper.cpp
 FRAMEWORK_PATH := $(WHISPER_CPP_DIR)/build-apple/whisper.xcframework
 LOCAL_DERIVED_DATA := $(CURDIR)/.local-build
+DMG_DERIVED_DATA := $(CURDIR)/.dmg-build
+DMG_STAGING := $(CURDIR)/.dmg-staging
+DMG_OUTPUT := $(CURDIR)/VoiceInk.dmg
 
-.PHONY: all clean whisper setup build local check healthcheck help dev run
+.PHONY: all clean whisper setup build local check healthcheck help dev run dmg
 
 # Default target
 all: check build
@@ -63,7 +66,7 @@ local: check setup
 		echo "Copying VoiceInk.app to ~/Downloads..."; \
 		rm -rf "$$HOME/Downloads/VoiceInk.app"; \
 		ditto "$$APP_PATH" "$$HOME/Downloads/VoiceInk.app"; \
-		xattr -cr "$$HOME/Downloads/VoiceInk.app"; \
+		find "$$HOME/Downloads/VoiceInk.app" -exec xattr -c {} + 2>/dev/null || true; \
 		echo ""; \
 		echo "Build complete! App saved to: ~/Downloads/VoiceInk.app"; \
 		echo "Run with: open ~/Downloads/VoiceInk.app"; \
@@ -75,6 +78,32 @@ local: check setup
 		echo "Error: Could not find built VoiceInk.app at $$APP_PATH"; \
 		exit 1; \
 	fi
+
+# Build a shareable DMG (Release, ad-hoc signed — recipients use right-click > Open once)
+dmg: check setup
+	@echo "Building VoiceInk (Release) for DMG distribution..."
+	@rm -rf "$(DMG_DERIVED_DATA)" "$(DMG_STAGING)"
+	xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Release \
+		-derivedDataPath "$(DMG_DERIVED_DATA)" \
+		-xcconfig LocalBuild.xcconfig \
+		CODE_SIGN_IDENTITY="-" \
+		CODE_SIGNING_REQUIRED=NO \
+		CODE_SIGNING_ALLOWED=YES \
+		DEVELOPMENT_TEAM="" \
+		CODE_SIGN_ENTITLEMENTS="$(CURDIR)/VoiceInk/VoiceInk.local.entitlements" \
+		SWIFT_ACTIVE_COMPILATION_CONDITIONS='$$(inherited) LOCAL_BUILD' \
+		build
+	@APP_PATH="$(DMG_DERIVED_DATA)/Build/Products/Release/VoiceInk.app" && \
+	if [ ! -d "$$APP_PATH" ]; then echo "Error: Release VoiceInk.app not found"; exit 1; fi && \
+	mkdir -p "$(DMG_STAGING)" && \
+	ditto "$$APP_PATH" "$(DMG_STAGING)/VoiceInk.app" && \
+	cp "$(CURDIR)/Packaging/INSTALL - READ ME FIRST.txt" "$(DMG_STAGING)/" && \
+	ln -s /Applications "$(DMG_STAGING)/Applications" && \
+	rm -f "$(DMG_OUTPUT)" && \
+	hdiutil create -volname "VoiceInk" -srcfolder "$(DMG_STAGING)" -ov -format UDZO "$(DMG_OUTPUT)" && \
+	rm -rf "$(DMG_STAGING)" && \
+	echo "" && \
+	echo "DMG ready: $(DMG_OUTPUT)"
 
 # Run application
 run:

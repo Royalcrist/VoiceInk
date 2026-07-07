@@ -296,7 +296,8 @@ struct ModeConfigFormView: View {
                         }
                         if draft.selectedAIModel == nil,
                            let provider = configuredSelectedAIProvider,
-                           provider != .localCLI {
+                           provider != .localCLI,
+                           provider != .antigravity {
                             draft.selectedAIModel = warmupSnapshot.selectedModel(for: provider)
                         }
                         if draft.selectedPromptId == nil {
@@ -336,7 +337,7 @@ struct ModeConfigFormView: View {
                     .onChange(of: draft.selectedAIProvider) { _, newValue in
                         if let provider = newValue.flatMap({ AIProvider(rawValue: $0) }) {
                             switch provider {
-                            case .localCLI:
+                            case .localCLI, .antigravity:
                                 draft.selectedAIModel = nil
                             case .ollama:
                                 if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
@@ -361,7 +362,7 @@ struct ModeConfigFormView: View {
 
     @ViewBuilder
     private func aiModelPicker(for provider: AIProvider) -> some View {
-        if provider == .localCLI {
+        if provider == .localCLI || provider == .antigravity {
             LabeledContent("AI Model") {
                 Text("Default")
                     .foregroundColor(.secondary)
