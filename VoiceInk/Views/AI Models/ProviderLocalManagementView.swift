@@ -89,6 +89,19 @@ struct LocalEnhancementProviderManagementView: View {
         aiService.cliProviderIsAvailable(provider) ? Text("Detected") : Text("Not installed")
     }
 
+    private static let claudeCodeModels = ["Haiku", "Sonnet", "Opus"]
+    private static let claudeCodeEfforts = ["Low", "Medium"]
+
+    // Stored as one "Model (Effort)" string; the two pickers edit its halves.
+    private var claudeCodeSelection: (model: String, effort: String) {
+        let parsed = CLIProviderService.claudeCodeModelAndEffort(from: aiService.selectedModel(for: .claudeCode))
+        return (parsed.model.capitalized, (parsed.effort ?? "low").capitalized)
+    }
+
+    private func setClaudeCodeSelection(model: String, effort: String) {
+        aiService.selectModel("\(model) (\(effort))", for: .claudeCode)
+    }
+
     @ViewBuilder
     private func cliProviderConfiguration(_ provider: AIProvider) -> some View {
         LocalProviderExpandedContent {
@@ -112,7 +125,44 @@ struct LocalEnhancementProviderManagementView: View {
                     }
                 }
 
-                if !provider.availableModels.isEmpty {
+                if provider == .claudeCode {
+                    Divider()
+                        .padding(.leading, LocalProviderMetrics.labelWidth + 12)
+
+                    LocalProviderFormRow(title: "Model") {
+                        Picker(
+                            "Model",
+                            selection: Binding(
+                                get: { claudeCodeSelection.model },
+                                set: { setClaudeCodeSelection(model: $0, effort: claudeCodeSelection.effort) }
+                            )
+                        ) {
+                            ForEach(Self.claudeCodeModels, id: \.self) { model in
+                                Text(model).tag(model)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: 160, alignment: .leading)
+                    }
+
+                    LocalProviderFormRow(title: "Effort") {
+                        Picker(
+                            "Effort",
+                            selection: Binding(
+                                get: { claudeCodeSelection.effort },
+                                set: { setClaudeCodeSelection(model: claudeCodeSelection.model, effort: $0) }
+                            )
+                        ) {
+                            ForEach(Self.claudeCodeEfforts, id: \.self) { effort in
+                                Text(effort).tag(effort)
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .labelsHidden()
+                        .frame(maxWidth: 160, alignment: .leading)
+                    }
+                } else if !provider.availableModels.isEmpty {
                     Divider()
                         .padding(.leading, LocalProviderMetrics.labelWidth + 12)
 

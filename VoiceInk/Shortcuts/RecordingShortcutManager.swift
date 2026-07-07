@@ -59,6 +59,9 @@ class RecordingShortcutManager: ObservableObject {
     private var middleClickMonitors: [Any?] = []
     private var middleClickTask: Task<Void, Never>?
 
+    // Re-arms the event tap once Accessibility is granted after launch
+    private var accessibilityRetryTask: Task<Void, Never>?
+
     enum Mode: String, CaseIterable {
         case toggle = "toggle"
         case pushToTalk = "pushToTalk"
@@ -221,7 +224,7 @@ class RecordingShortcutManager: ObservableObject {
             interruptibleRecordingActions.insert(.secondaryRecording)
         }
 
-        shortcutMonitor.start(
+        let started = shortcutMonitor.start(
             shortcuts: shortcuts,
             interruptibleActions: interruptibleRecordingActions,
             onKeyDown: { [weak self] action, eventTime in
@@ -256,6 +259,27 @@ class RecordingShortcutManager: ObservableObject {
                 }
             }
         )
+
+        // The event tap cannot be created until Accessibility is granted. When that is
+        // why start failed, watch for the grant and re-arm automatically — no app
+        // restart needed after the user flips the toggle in System Settings.
+        if !started, !AXIsProcessTrusted() {
+            scheduleRetryWhenAccessibilityGranted()
+        }
+    }
+
+    private func scheduleRetryWhenAccessibilityGranted() {
+        guard accessibilityRetryTask == nil else { return }
+
+        accessibilityRetryTask = Task { @MainActor [weak self] in
+            while !Task.isCancelled, !AXIsProcessTrusted() {
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
+            }
+
+            guard let self, !Task.isCancelled else { return }
+            self.accessibilityRetryTask = nil
+            self.refreshShortcutMonitoring()
+        }
     }
 
     private func recordingMode(for action: ShortcutAction) -> Mode? {

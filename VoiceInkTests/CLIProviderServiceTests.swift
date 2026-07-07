@@ -31,7 +31,10 @@ struct CLIProviderMetadataTests {
     @Test func claudeCodeModelCatalog() {
         #expect(AIProvider.claudeCode.defaultModel == "Haiku (Low)")
         #expect(AIProvider.claudeCode.availableModels.contains("Haiku (Low)"))
-        #expect(AIProvider.claudeCode.availableModels.contains("Opus (High)"))
+        #expect(AIProvider.claudeCode.availableModels.contains("Opus (Medium)"))
+        // High tiers deliberately excluded from the catalog (latency), but stay parseable.
+        #expect(!AIProvider.claudeCode.availableModels.contains("Opus (High)"))
+        #expect(CLIProviderService.claudeCodeModelAndEffort(from: "Opus (High)").effort == "high")
     }
 
     @Test func antigravityModelCatalog() {

@@ -167,10 +167,11 @@ enum AIProvider: String, CaseIterable {
             return []
         case .claudeCode:
             // Model × reasoning effort. Split into --model / --effort when the CLI is called.
+            // Higher effort tiers exist (high/xhigh/max) but only add latency for dictation.
             return [
-                "Haiku (Low)", "Haiku (Medium)", "Haiku (High)",
-                "Sonnet (Low)", "Sonnet (Medium)", "Sonnet (High)",
-                "Opus (Low)", "Opus (Medium)", "Opus (High)"
+                "Haiku (Low)", "Haiku (Medium)",
+                "Sonnet (Low)", "Sonnet (Medium)",
+                "Opus (Low)", "Opus (Medium)"
             ]
         case .antigravity:
             // Mirrors `agy models`; names are passed to the CLI's --model flag verbatim.
