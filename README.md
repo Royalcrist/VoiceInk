@@ -20,6 +20,20 @@
 
 ---
 
+## About this fork
+
+This is a fork of [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) that adds:
+
+- **Claude Code & Antigravity as AI providers** — enhancement runs through the official `claude` / `agy` CLIs already installed on your Mac, billed to your existing Claude or Google subscription. No API keys, no extra cost. Auto-detected; the app works fully without them (Ollama and cloud providers remain available). Claude Code has separate Model (Haiku/Sonnet/Opus) and Effort (Low/Medium) pickers; Antigravity offers all `agy models`.
+- **One-toggle AI Formatting** — a single menu-bar switch turns AI formatting of your dictation on/off, on by default. With text selected, your dictation becomes a rewrite instruction for the selection.
+- **Simpler onboarding** — the recommended local model (Parakeet V3) downloads automatically with a progress bar; Screen Recording permission is requested only when the screen-context feature is first used; detected subscription CLIs are offered as the first AI choice.
+- **Sticky manual mode selection** — picking a mode from the menu bar survives recordings (app-specific rules still take precedence).
+- **`make dmg`** — builds a shareable drag-to-Applications installer with a plain-language install guide.
+
+Build it yourself for free with the instructions in [BUILDING.md](BUILDING.md) — including exact fixes for the common build failures (Xcode 26 whisper.cpp issue, first-launch plugin errors, ad-hoc signing permission quirks). Under GPL v3, same as upstream. If you find VoiceInk useful, consider [supporting the original developer](https://tryvoiceink.com).
+
+---
+
 VoiceInk is a native macOS application that transcribes what you say to text almost instantly. You can find all the information and download the app from [here](https://tryvoiceink.com). 
 
 ![VoiceInk Mac App](https://github.com/user-attachments/assets/12367379-83e7-48a6-b52c-4488a6a04bba)

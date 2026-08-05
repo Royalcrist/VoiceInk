@@ -1,6 +1,22 @@
-# Building VoiceInk
+# Building VoiceInk (this fork)
 
 This guide provides detailed instructions for building VoiceInk from source.
+
+> **Fork note:** this repository is a fork of
+> [Beingpax/VoiceInk](https://github.com/Beingpax/VoiceInk) with extra features
+> (Claude Code / Antigravity subscription CLI providers, one-toggle AI
+> Formatting, auto model download, `make dmg` packaging). Clone THIS repo, not
+> upstream, to get them:
+>
+> ```bash
+> git clone https://github.com/Royalcrist/VoiceInk.git
+> cd VoiceInk
+> make local        # builds without an Apple Developer account
+> open ~/Downloads/VoiceInk.app
+> ```
+>
+> If the build fails, jump to **[Known build issues & exact fixes](#known-build-issues--exact-fixes)**
+> below — the common failures and their copy-paste solutions are documented there.
 
 ## Prerequisites
 
@@ -127,9 +143,101 @@ cd VoiceInk
    - Run the test suite before making changes
    - Ensure all tests pass after your modifications
 
-## Troubleshooting
+## Known build issues & exact fixes
 
-If you encounter any build issues:
+These are real failures encountered while building this fork, with the exact
+commands that fix them. Work through them in order if `make local` fails.
+
+### 1. whisper.cpp XCFramework build fails on Xcode 26 ("No CMAKE_C_COMPILER could be found")
+
+`make` clones whisper.cpp and runs its `build-xcframework.sh`, which currently
+fails with Xcode 26's CMake generator:
+
+```
+-- The C compiler identification is unknown
+CMake Error at CMakeLists.txt:2 (project):
+  No CMAKE_C_COMPILER could be found.
+make: *** [whisper] Error 1
+```
+
+**Fix — use the prebuilt XCFramework from whisper.cpp's releases:**
+
+```bash
+# Find the latest xcframework asset (needs GitHub CLI, or browse the releases page)
+gh api repos/ggml-org/whisper.cpp/releases/latest \
+  --jq '.assets[] | select(.name | test("xcframework")) | .browser_download_url'
+
+# Download and place it exactly where the Makefile expects it (adjust version):
+curl -sL -o /tmp/whisper-xcframework.zip \
+  https://github.com/ggml-org/whisper.cpp/releases/download/v1.9.1/whisper-v1.9.1-xcframework.zip
+unzip -q -o /tmp/whisper-xcframework.zip -d /tmp/whisper-xcfw
+mkdir -p ~/VoiceInk-Dependencies/whisper.cpp/build-apple
+ditto /tmp/whisper-xcfw/build-apple/whisper.xcframework \
+  ~/VoiceInk-Dependencies/whisper.cpp/build-apple/whisper.xcframework
+```
+
+Then run `make local` again — the Makefile skips the whisper build when the
+framework already exists at that path.
+
+### 2. xcodebuild fails with "A required plugin failed to load"
+
+Seen after an Xcode update (e.g. `IDESimulatorFoundation` dlopen errors).
+Xcode needs its first-launch component installation:
+
+```bash
+xcodebuild -runFirstLaunch
+```
+
+Then rebuild.
+
+### 3. Running the test suite
+
+The plain `test` action fails asking for a provisioning profile. Use the local
+signing flags:
+
+```bash
+xcodebuild -project VoiceInk.xcodeproj -scheme VoiceInk -configuration Debug \
+  -derivedDataPath .local-build \
+  -xcconfig LocalBuild.xcconfig \
+  CODE_SIGN_IDENTITY="-" CODE_SIGNING_REQUIRED=NO CODE_SIGNING_ALLOWED=YES \
+  DEVELOPMENT_TEAM="" CODE_SIGN_STYLE=Manual PROVISIONING_PROFILE_SPECIFIER="" \
+  CODE_SIGN_ENTITLEMENTS="$PWD/VoiceInk/VoiceInk.local.entitlements" \
+  SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) LOCAL_BUILD' \
+  test -only-testing:VoiceInkTests
+```
+
+### 4. Permissions break after every rebuild (ad-hoc signing)
+
+`make local` signs the app ad-hoc, so every rebuild produces a new code
+signature. macOS ties Accessibility/Screen Recording grants to the signature,
+which means **after each rebuild the Accessibility grant must be redone**:
+
+```bash
+tccutil reset Accessibility com.prakashjoshipax.VoiceInk
+open ~/Downloads/VoiceInk.app
+# then: System Settings → Privacy & Security → Accessibility → enable VoiceInk
+```
+
+The app re-arms its shortcut listener automatically within a couple of seconds
+of the grant — no restart needed. If System Settings shows several stale
+"VoiceInk" rows, remove them all with "−" first and let the app re-add itself.
+
+Distributed builds (the DMG) are not affected: recipients install one stable
+copy and grant once.
+
+### 5. Building the shareable DMG
+
+```bash
+make dmg     # Release build + drag-to-Applications DMG at ./VoiceInk.dmg
+```
+
+The DMG contains the app, an Applications symlink, and a plain-language
+install guide (including the one-time right-click → Open step that unsigned
+apps need on first launch).
+
+## General troubleshooting
+
+If you encounter any other build issues:
 1. Clean the build folder (Cmd+Shift+K)
 2. Clean the build cache (Cmd+Shift+K twice)
 3. Check Xcode and macOS versions
