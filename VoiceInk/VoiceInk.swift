@@ -95,8 +95,13 @@ struct VoiceInkApp: App {
         _enhancementService = StateObject(wrappedValue: enhancementService)
 
         // Existing installs predate the Agent starter mode; add it once (never on
-        // fresh installs, where onboarding seeds it, and never twice).
-        AgentModeSeeder.ensureInstalled(enhancementService: enhancementService)
+        // fresh installs, where onboarding seeds it, and never twice). Delayed so
+        // startup mode migrations cannot overwrite the freshly seeded mode.
+        Task { @MainActor [weak enhancementService] in
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
+            guard let enhancementService else { return }
+            AgentModeSeeder.ensureInstalled(enhancementService: enhancementService)
+        }
 
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]

@@ -18,10 +18,12 @@ enum AgentModeSeeder {
             return
         }
 
-        defaults.set(true, forKey: seededKey)
+        guard let template = StarterModeCatalog.templates.first(where: { $0.kind == .agent }) else {
+            return
+        }
 
-        guard let template = StarterModeCatalog.templates.first(where: { $0.kind == .agent }),
-              !manager.configurations.contains(where: { $0.id == template.id }) else {
+        guard !manager.configurations.contains(where: { $0.id == template.id }) else {
+            defaults.set(true, forKey: seededKey)
             return
         }
 
@@ -53,5 +55,6 @@ enum AgentModeSeeder {
         )
 
         manager.replaceConfigurations(manager.configurations + [agentConfig])
+        defaults.set(true, forKey: seededKey)
     }
 }
