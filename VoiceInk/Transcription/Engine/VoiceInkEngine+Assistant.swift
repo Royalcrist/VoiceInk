@@ -22,7 +22,8 @@ extension VoiceInkEngine {
                 provider: provider,
                 modelName: modelName,
                 systemPrompt: systemPrompt,
-                messages: assistantSession.messages
+                messages: assistantSession.messages,
+                isAgentTurn: assistantSession.isAgentMode
             )
 
             guard assistantSession.hasMessage(id: userMessage.id),

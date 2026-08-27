@@ -28,8 +28,27 @@ final class AssistantChatService {
         provider: AIProvider,
         modelName: String?,
         systemPrompt: String?,
-        messages: [AssistantDisplayMessage]
+        messages: [AssistantDisplayMessage],
+        isAgentTurn: Bool = false
     ) async throws -> Reply {
+        // Agent turns resume the CLI session server-side: only the newest user message
+        // is sent, the session itself carries the conversation (and any tool results).
+        if isAgentTurn {
+            let latestUserMessage = messages.last(where: { $0.role == .user })?.content ?? ""
+            let startTime = Date()
+            let text = try await AgentCLIService.shared.sendMessage(
+                latestUserMessage,
+                appendSystemPrompt: nil,
+                model: modelName
+            )
+            return Reply(
+                text: text,
+                duration: Date().timeIntervalSince(startTime),
+                systemPrompt: systemPrompt,
+                requestLog: Self.requestLog(from: messages)
+            )
+        }
+
         let chatMessages = messages.map { message in
             switch message.role {
             case .user:

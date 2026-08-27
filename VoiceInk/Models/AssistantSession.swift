@@ -32,6 +32,7 @@ final class AssistantSession: ObservableObject {
     private(set) var modeEmoji: String?
     private(set) var promptName: String?
     private(set) var systemPrompt: String?
+    private(set) var isAgentMode: Bool = false
 
     var isVisible: Bool {
         phase != .inactive
@@ -51,13 +52,15 @@ final class AssistantSession: ObservableObject {
         modelName: String?,
         modeName: String?,
         modeEmoji: String?,
-        promptName: String?
+        promptName: String?,
+        isAgentMode: Bool = false
     ) {
         self.provider = provider
         self.modelName = modelName
         self.modeName = modeName
         self.modeEmoji = modeEmoji
         self.promptName = promptName
+        self.isAgentMode = isAgentMode
         messages = []
 
         let trimmedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -135,6 +138,7 @@ final class AssistantSession: ObservableObject {
         modeEmoji = nil
         promptName = nil
         systemPrompt = nil
+        isAgentMode = false
     }
 
     private func appendOrReplace(message: AssistantDisplayMessage) {

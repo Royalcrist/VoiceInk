@@ -20,6 +20,7 @@ struct ModeConfigDraft {
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var outputMode: ModeOutputMode
+    var isAgentModeEnabled: Bool
     var autoSendKey: AutoSendKey
     var customCommand: String
     var isDefault: Bool
@@ -51,6 +52,7 @@ struct ModeConfigDraft {
             selectedAIProvider = inheritedConfig?.selectedAIProvider
             selectedAIModel = inheritedConfig?.selectedAIModel
             outputMode = .paste
+            isAgentModeEnabled = false
             autoSendKey = .none
             customCommand = inheritedConfig?.customCommand?.command ?? ""
             isDefault = false
@@ -78,6 +80,7 @@ struct ModeConfigDraft {
             selectedAIProvider = latestConfig.selectedAIProvider
             selectedAIModel = latestConfig.selectedAIModel
             outputMode = latestConfig.outputMode
+            isAgentModeEnabled = latestConfig.isAgentModeEnabled
             autoSendKey = latestConfig.autoSendKey
             customCommand = latestConfig.customCommand?.command ?? ""
             isDefault = latestConfig.isDefault
@@ -147,6 +150,10 @@ struct ModeConfigDraft {
             outputMode = .paste
         }
 
+        if outputMode != .respond {
+            isAgentModeEnabled = false
+        }
+
         if !outputMode.usesPasteOptions {
             autoSendKey = .none
         }
@@ -183,6 +190,7 @@ struct ModeConfigDraft {
                 selectedAIProvider: selectedAIProvider,
                 selectedAIModel: selectedAIModel,
                 outputMode: outputMode,
+                isAgentModeEnabled: isAgentModeEnabled,
                 autoSendKey: savedAutoSendKey,
                 customCommand: savedCustomCommand,
                 isDefault: savedIsDefault
@@ -208,6 +216,7 @@ struct ModeConfigDraft {
             updatedConfig.selectedAIProvider = selectedAIProvider
             updatedConfig.selectedAIModel = selectedAIModel
             updatedConfig.outputMode = outputMode
+            updatedConfig.isAgentModeEnabled = isAgentModeEnabled
             updatedConfig.autoSendKey = savedAutoSendKey
             updatedConfig.customCommand = savedCustomCommand
             updatedConfig.isDefault = savedIsDefault

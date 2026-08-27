@@ -6,6 +6,7 @@ enum StarterModeKind: String, CaseIterable, Identifiable {
     case email
     case rewrite
     case assistant
+    case agent
 
     var id: String { rawValue }
 }
@@ -113,6 +114,20 @@ enum StarterModeCatalog {
             usesAIEnhancement: true,
             useSelectedTextContext: false,
             useScreenCapture: false,
+            isDefault: false
+        ),
+        StarterModeTemplate(
+            kind: .agent,
+            id: UUID(uuidString: "10000000-0000-0000-0000-000000000006")!,
+            name: "Agent",
+            icon: .symbol("wand.and.rays"),
+            description: "A voice-driven Claude Code agent that researches, edits files, and acts for you.",
+            guidance: "Speak a task — the agent can search the web, work with your files, and remembers the conversation across dictations. Requires the Claude Code CLI.",
+            promptId: PromptTemplates.agentPromptId,
+            outputMode: .respond,
+            usesAIEnhancement: true,
+            useSelectedTextContext: true,
+            useScreenCapture: true,
             isDefault: false
         )
     ]

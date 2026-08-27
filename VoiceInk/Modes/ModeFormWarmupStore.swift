@@ -3,6 +3,9 @@ import Foundation
 
 struct ModeFormWarmupSnapshot {
     let connectedAIProviders: [AIProvider]
+    // Every enhancement-capable provider, connected first — the mode form shows all of
+    // them so unconnected ones (Gemini, Groq, OpenRouter…) can be connected inline.
+    let allEnhancementProviders: [AIProvider]
     let aiModelsByProvider: [AIProvider: [String]]
     let selectedAIModelsByProvider: [AIProvider: String]
     let usableTranscriptionModels: [any TranscriptionModel]
@@ -11,6 +14,7 @@ struct ModeFormWarmupSnapshot {
 
     static let empty = ModeFormWarmupSnapshot(
         connectedAIProviders: [],
+        allEnhancementProviders: [],
         aiModelsByProvider: [:],
         selectedAIModelsByProvider: [:],
         usableTranscriptionModels: [],
@@ -34,6 +38,15 @@ struct ModeFormWarmupSnapshot {
         }
 
         connectedAIProviders = providers
+        let everyEnhancementProvider = AIProvider.allCases.filter { provider in
+            guard provider.supportsEnhancement else { return false }
+            if provider == .custom {
+                return CustomAIProviderManager.shared.hasConfiguredModels
+            }
+            return true
+        }
+        allEnhancementProviders = providers.filter { everyEnhancementProvider.contains($0) } +
+            everyEnhancementProvider.filter { !providers.contains($0) }
         aiModelsByProvider = modelsByProvider
         selectedAIModelsByProvider = selectedModelsByProvider
         usableTranscriptionModels = transcriptionModelManager.usableModels
@@ -43,6 +56,7 @@ struct ModeFormWarmupSnapshot {
 
     private init(
         connectedAIProviders: [AIProvider],
+        allEnhancementProviders: [AIProvider],
         aiModelsByProvider: [AIProvider: [String]],
         selectedAIModelsByProvider: [AIProvider: String],
         usableTranscriptionModels: [any TranscriptionModel],
@@ -50,6 +64,7 @@ struct ModeFormWarmupSnapshot {
         prompts: [CustomPrompt]
     ) {
         self.connectedAIProviders = connectedAIProviders
+        self.allEnhancementProviders = allEnhancementProviders
         self.aiModelsByProvider = aiModelsByProvider
         self.selectedAIModelsByProvider = selectedAIModelsByProvider
         self.usableTranscriptionModels = usableTranscriptionModels

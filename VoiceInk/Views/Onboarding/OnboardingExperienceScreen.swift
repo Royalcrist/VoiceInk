@@ -13,6 +13,7 @@ struct OnboardingExperienceScreen: View {
     let onContinueIntro: () -> Void
     let onBackFromPractice: () -> Void
     let onAdvance: () -> Void
+    let onSkipAll: () -> Void
     let onShortcutChanged: () -> Void
     let onAppear: () -> Void
 
@@ -45,6 +46,15 @@ struct OnboardingExperienceScreen: View {
                 onShortcutChanged: onShortcutChanged
             )
             .id(step.id)
+
+            Button(action: onSkipAll) {
+                Text("Skip the practice — set everything up for me")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(AppTheme.Text.secondary)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .padding(.top, 6)
         } bottomBar: {
             OnboardingBottomBar(
                 leadingTitle: "Back",

@@ -94,6 +94,10 @@ struct VoiceInkApp: App {
         let enhancementService = AIEnhancementService(aiService: aiService, modelContext: resolvedContainer.mainContext)
         _enhancementService = StateObject(wrappedValue: enhancementService)
 
+        // Existing installs predate the Agent starter mode; add it once (never on
+        // fresh installs, where onboarding seeds it, and never twice).
+        AgentModeSeeder.ensureInstalled(enhancementService: enhancementService)
+
         // 1. Create modelsDirectory URL
         let appSupportDirectory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("com.prakashjoshipax.VoiceInk")

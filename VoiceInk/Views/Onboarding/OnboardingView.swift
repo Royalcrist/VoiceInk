@@ -136,6 +136,12 @@ struct OnboardingView: View {
                                 enhancementService: enhancementService
                             )
                         },
+                        onSkipAll: {
+                            coordinator.flow.skipExperienceInstallingAllModes(
+                                isTranscriptionSetupReady: isTranscriptionSetupReady,
+                                enhancementService: enhancementService
+                            )
+                        },
                         onShortcutChanged: {
                             coordinator.flow.refreshExperienceModeState(enhancementService: enhancementService)
                         },

@@ -483,7 +483,9 @@ class VoiceInkEngine: NSObject, ObservableObject {
                         modelName: configuration.modelName ?? configuration.provider?.defaultModel,
                         modeName: configuration.mode?.name,
                         modeEmoji: configuration.mode?.icon.value,
-                        promptName: configuration.prompt?.title
+                        promptName: configuration.prompt?.title,
+                        isAgentMode: configuration.mode?.isAgentModeEnabled == true &&
+                            configuration.provider == .claudeCode
                     )
                 },
                 showResponse: { [weak self] response, systemPrompt in

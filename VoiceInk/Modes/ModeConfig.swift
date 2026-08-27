@@ -83,13 +83,16 @@ struct ModeConfig: Codable, Identifiable, Equatable {
     var selectedAIProvider: String?
     var selectedAIModel: String?
     var outputMode: ModeOutputMode = .paste
+    // Respond-mode modes using the Claude Code provider can run as a full agent
+    // (tools + session continuity via AgentCLIService) instead of plain chat.
+    var isAgentModeEnabled: Bool = false
     var autoSendKey: AutoSendKey = .none
     var customCommand: ModeCustomCommand?
     var isEnabled: Bool = true
     var isDefault: Bool = false
 
     enum CodingKeys: String, CodingKey {
-        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled, selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault
+        case id, name, icon, appConfigs, urlConfigs, triggerGroups, triggerWords, isAIEnhancementEnabled, selectedPrompt, isRealtimeTranscriptionEnabled, selectedLanguage, isTextFormattingEnabled, useClipboardContext, useSelectedTextContext, useScreenCapture, selectedAIProvider, selectedAIModel, outputMode, isAutoSendEnabled, autoSendKey, customCommand, isEnabled, isDefault, isAgentModeEnabled
         case legacyEmoji = "emoji"
         case selectedWhisperModel
         case selectedTranscriptionModelName
@@ -99,7 +102,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
          urlConfigs: [URLConfig]? = nil, triggerGroups: [ModeTriggerGroup]? = nil, triggerWords: [String] = [],
          isAIEnhancementEnabled: Bool, selectedPrompt: String? = nil,
          selectedTranscriptionModelName: String? = nil, isRealtimeTranscriptionEnabled: Bool = true, selectedLanguage: String? = nil, useClipboardContext: Bool = false, useSelectedTextContext: Bool = true, useScreenCapture: Bool = false,
-         isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil, outputMode: ModeOutputMode = .paste, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil, isEnabled: Bool = true, isDefault: Bool = false) {
+         isTextFormattingEnabled: Bool = false, selectedAIProvider: String? = nil, selectedAIModel: String? = nil, outputMode: ModeOutputMode = .paste, isAgentModeEnabled: Bool = false, autoSendKey: AutoSendKey = .none, customCommand: ModeCustomCommand? = nil, isEnabled: Bool = true, isDefault: Bool = false) {
         self.id = id
         self.name = name
         self.icon = icon
@@ -114,6 +117,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         self.useScreenCapture = useScreenCapture
         self.autoSendKey = autoSendKey
         self.outputMode = outputMode
+        self.isAgentModeEnabled = isAgentModeEnabled
         self.customCommand = customCommand
         self.selectedAIProvider = selectedAIProvider
         self.selectedAIModel = selectedAIModel
@@ -169,6 +173,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         selectedAIProvider = try container.decodeIfPresent(String.self, forKey: .selectedAIProvider)
         selectedAIModel = try container.decodeIfPresent(String.self, forKey: .selectedAIModel)
         outputMode = try container.decodeIfPresent(ModeOutputMode.self, forKey: .outputMode) ?? .paste
+        isAgentModeEnabled = try container.decodeIfPresent(Bool.self, forKey: .isAgentModeEnabled) ?? false
         customCommand = try container.decodeIfPresent(ModeCustomCommand.self, forKey: .customCommand)
         // Migrate from old isAutoSendEnabled bool to new autoSendKey enum
         if let rawValue = try container.decodeIfPresent(String.self, forKey: .autoSendKey),
@@ -211,6 +216,7 @@ struct ModeConfig: Codable, Identifiable, Equatable {
         try container.encodeIfPresent(selectedAIProvider, forKey: .selectedAIProvider)
         try container.encodeIfPresent(selectedAIModel, forKey: .selectedAIModel)
         try container.encode(outputMode, forKey: .outputMode)
+        try container.encode(isAgentModeEnabled, forKey: .isAgentModeEnabled)
         try container.encode(autoSendKey, forKey: .autoSendKey)
         try container.encodeIfPresent(customCommand, forKey: .customCommand)
         try container.encodeIfPresent(selectedTranscriptionModelName, forKey: .selectedTranscriptionModelName)
@@ -367,28 +373,6 @@ class ModeManager: ObservableObject {
         }
 
         return getDefaultConfiguration()
-    }
-
-    // The single "AI Formatting" switch shown in the menu bar: on = the Enhancement
-    // starter mode becomes default + active, off = plain Dictation.
-    var isAIFormattingEnabled: Bool {
-        currentEffectiveConfiguration?.isAIEnhancementEnabled ?? false
-    }
-
-    func setAIFormattingEnabled(_ enabled: Bool) {
-        let starterKind: StarterModeKind = enabled ? .enhance : .clean
-        if let template = StarterModeCatalog.templates.first(where: { $0.kind == starterKind }),
-           let config = configurations.first(where: { $0.id == template.id && $0.isEnabled }) {
-            setAsDefault(configId: config.id)
-            setActiveConfiguration(config)
-            return
-        }
-
-        // Starter mode was deleted or disabled; fall back to any mode with the requested behavior.
-        if let fallback = configurations.first(where: { $0.isEnabled && $0.isAIEnhancementEnabled == enabled }) {
-            setAsDefault(configId: fallback.id)
-            setActiveConfiguration(fallback)
-        }
     }
     
     func hasDefaultConfiguration() -> Bool {

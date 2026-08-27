@@ -372,6 +372,7 @@ struct RecorderStatusDisplay: View {
 
 struct AssistantPanelView: View {
     @ObservedObject var session: AssistantSession
+    @ObservedObject private var agentService = AgentCLIService.shared
     let liveFollowUpText: String
     let onSend: (String) -> Void
 
@@ -384,6 +385,9 @@ struct AssistantPanelView: View {
     private var statusText: String? {
         switch session.phase {
         case .responding, .sendingFollowUp:
+            if session.isAgentMode {
+                return agentService.currentActivity ?? String(localized: "Working…")
+            }
             return String(localized: "Thinking")
         case .failed(let message):
             return message
@@ -439,6 +443,11 @@ struct AssistantPanelView: View {
                             .scaleEffect(0.72)
                     }
                 }
+                .overlay(alignment: .topTrailing) {
+                    if session.isAgentMode {
+                        agentControls
+                    }
+                }
             }
             .onChange(of: session.messages.count) {
                 scrollToBottom(proxy)
@@ -488,6 +497,34 @@ struct AssistantPanelView: View {
             .disabled(!canSendDraft)
             .help("Send follow up")
         }
+    }
+
+    private var agentControls: some View {
+        HStack(spacing: 6) {
+            if session.isBusy {
+                Button {
+                    agentService.cancelCurrentTurn()
+                } label: {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.75))
+                }
+                .buttonStyle(.plain)
+                .help("Stop the current task")
+            } else if agentService.hasActiveConversation {
+                Button {
+                    agentService.startNewConversation()
+                    session.reset()
+                } label: {
+                    Image(systemName: "plus.bubble")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(.white.opacity(0.75))
+                }
+                .buttonStyle(.plain)
+                .help("New conversation (forgets this one)")
+            }
+        }
+        .padding(.trailing, 2)
     }
 
     private var shouldShowLiveFollowUpText: Bool {
@@ -553,9 +590,22 @@ private struct AssistantMessageBubble: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .overlay(alignment: .bottomTrailing) {
                     if !isUser {
-                        CopyIconButton(textToCopy: message.content)
-                            .scaleEffect(0.72)
-                            .padding(0)
+                        HStack(spacing: 0) {
+                            Button {
+                                _ = CursorPaster.startPasteAtCursor(message.content)
+                            } label: {
+                                Image(systemName: "text.insert")
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundColor(.white.opacity(0.6))
+                            }
+                            .buttonStyle(.plain)
+                            .scaleEffect(0.9)
+                            .help("Insert at cursor")
+
+                            CopyIconButton(textToCopy: message.content)
+                                .scaleEffect(0.72)
+                                .padding(0)
+                        }
                     }
                 }
                 .help(isUser ? message.content : "")

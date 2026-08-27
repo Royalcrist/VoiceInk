@@ -87,9 +87,14 @@ enum StarterModeFactory {
             useSelectedTextContext: template.useSelectedTextContext,
             useScreenCapture: template.useScreenCapture,
             isTextFormattingEnabled: true,
-            selectedAIProvider: template.usesAIEnhancement ? provider.rawValue : nil,
-            selectedAIModel: template.usesAIEnhancement ? (modelName ?? provider.defaultModel) : nil,
+            selectedAIProvider: template.kind == .agent
+                ? AIProvider.claudeCode.rawValue
+                : (template.usesAIEnhancement ? provider.rawValue : nil),
+            selectedAIModel: template.kind == .agent
+                ? AIProvider.claudeCode.defaultModel
+                : (template.usesAIEnhancement ? (modelName ?? provider.defaultModel) : nil),
             outputMode: template.outputMode,
+            isAgentModeEnabled: template.kind == .agent,
             autoSendKey: .none,
             isEnabled: true,
             isDefault: template.isDefault

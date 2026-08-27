@@ -13,11 +13,15 @@ struct ModeConfigFormView: View {
 
     @EnvironmentObject private var aiService: AIService
     @EnvironmentObject private var modeWarmupStore: ModeFormWarmupStore
+    @ObservedObject private var agentService = AgentCLIService.shared
     @FocusState private var isNameFieldFocused: Bool
 
     @State private var isShowingIconPicker = false
     @State private var isShowingDeleteConfirmation = false
     @State private var isContextAwarenessExpanded = false
+    @State private var inlineAPIKey = ""
+    @State private var isConnectingInlineProvider = false
+    @State private var inlineConnectError: String?
 
     private var effectiveModelName: String? {
         draft.selectedTranscriptionModelName
@@ -37,7 +41,11 @@ struct ModeConfigFormView: View {
     }
 
     private var aiProviderOptions: [AIProvider] {
-        warmupSnapshot.connectedAIProviders
+        warmupSnapshot.allEnhancementProviders
+    }
+
+    private func isProviderConnected(_ provider: AIProvider) -> Bool {
+        warmupSnapshot.connectedAIProviders.contains(provider)
     }
 
     private var configuredSelectedAIProvider: AIProvider? {
@@ -330,7 +338,10 @@ struct ModeConfigFormView: View {
                 } else {
                     Picker("AI Provider", selection: providerBinding) {
                         ForEach(providerOptions, id: \.self) { provider in
-                            Text(provider.rawValue).tag(provider)
+                            Text(isProviderConnected(provider)
+                                ? provider.rawValue
+                                : String(format: String(localized: "%@ (not connected)"), provider.rawValue))
+                                .tag(provider)
                         }
                     }
                     .onChange(of: draft.selectedAIProvider) { _, newValue in
@@ -351,10 +362,121 @@ struct ModeConfigFormView: View {
                 }
 
                 if let provider = configuredSelectedAIProvider {
+                    if !isProviderConnected(provider) {
+                        inlineProviderConnect(for: provider)
+                    }
                     aiModelPicker(for: provider)
                     promptPicker
                     contextAwarenessRow
                 }
+            }
+        }
+    }
+
+    // Connect an unconfigured provider without leaving the mode form.
+    @ViewBuilder
+    private func inlineProviderConnect(for provider: AIProvider) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if provider.isSubscriptionCLIProvider {
+                Text("\(provider.rawValue) was not found on this Mac. Install the '\(provider.cliExecutableName ?? "")' command line tool, then re-detect.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack {
+                    Button {
+                        aiService.refreshCLIProviderDetection()
+                        modeWarmupStore.refreshSnapshot()
+                    } label: {
+                        Label("Re-detect", systemImage: "arrow.clockwise")
+                    }
+                    Spacer()
+                    manageProvidersButton
+                }
+            } else if provider == .ollama {
+                Text("Ollama is not running. Start the Ollama server, then manage the connection in AI settings.")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                HStack { Spacer(); manageProvidersButton }
+            } else if provider.requiresAPIKey {
+                HStack {
+                    SecureField(String(format: String(localized: "Paste %@ API key"), provider.rawValue), text: $inlineAPIKey)
+                        .textFieldStyle(.roundedBorder)
+
+                    Button {
+                        connectInlineProvider(provider)
+                    } label: {
+                        if isConnectingInlineProvider {
+                            ProgressView().controlSize(.small)
+                        } else {
+                            Text("Connect")
+                        }
+                    }
+                    .disabled(inlineAPIKey.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isConnectingInlineProvider)
+                }
+
+                HStack {
+                    if let url = provider.apiKeyURL {
+                        Link(destination: url) {
+                            Label("Get a free API key", systemImage: "key.fill")
+                                .font(.caption)
+                        }
+                    }
+                    Spacer()
+                    manageProvidersButton
+                }
+
+                if let inlineConnectError {
+                    Text(inlineConnectError)
+                        .font(.caption)
+                        .foregroundColor(AppTheme.Status.error)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+        .onChange(of: configuredSelectedAIProvider) { _, _ in
+            inlineAPIKey = ""
+            inlineConnectError = nil
+        }
+    }
+
+    private var manageProvidersButton: some View {
+        Button("Manage providers…") {
+            onDismiss()
+            NotificationCenter.default.post(
+                name: .navigateToDestination,
+                object: nil,
+                userInfo: ["destination": "AI Models"]
+            )
+        }
+        .font(.caption)
+    }
+
+    private func connectInlineProvider(_ provider: AIProvider) {
+        let key = inlineAPIKey.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+
+        isConnectingInlineProvider = true
+        inlineConnectError = nil
+
+        Task { @MainActor in
+            let result = await aiService.verifyAPIKey(key, for: provider, model: provider.defaultModel)
+            isConnectingInlineProvider = false
+
+            guard result.isValid else {
+                inlineConnectError = result.errorMessage
+                    ?? String(localized: "Could not verify this API key. Check the key and try again.")
+                return
+            }
+
+            guard APIKeyManager.shared.saveAPIKey(key, forProvider: provider.rawValue) else {
+                inlineConnectError = String(localized: "The key worked, but VoiceInk could not save it securely.")
+                return
+            }
+
+            inlineAPIKey = ""
+            NotificationCenter.default.post(name: .aiProviderKeyChanged, object: nil)
+            modeWarmupStore.refreshSnapshot()
+            if draft.selectedAIModel == nil || draft.selectedAIModel?.isEmpty == true {
+                draft.selectedAIModel = provider.defaultModel
             }
         }
     }
@@ -406,6 +528,12 @@ struct ModeConfigFormView: View {
 
     private func aiModelOptions(for provider: AIProvider) -> [String] {
         var models = warmupSnapshot.availableModels(for: provider)
+
+        // Unconnected providers have no snapshot entry; fall back to the static catalog
+        // so a model can be chosen while connecting inline.
+        if models.isEmpty {
+            models = provider.availableModels
+        }
 
         if let selectedModel = draft.selectedAIModel,
            !selectedModel.isEmpty,
@@ -525,6 +653,31 @@ struct ModeConfigFormView: View {
                     HStack(spacing: 6) {
                         Text("Set as default")
                         InfoTip("Default mode is used when no specific app or website matches are found.")
+                    }
+                }
+            }
+
+            if draft.outputMode == .respond, configuredSelectedAIProvider == .claudeCode {
+                Toggle(isOn: $draft.isAgentModeEnabled) {
+                    HStack(spacing: 6) {
+                        Text("Agent mode")
+                        InfoTip("Runs your requests through a real Claude Code session that can search the web, work with files, and remembers the conversation across dictations.")
+                    }
+                }
+
+                if draft.isAgentModeEnabled {
+                    Picker(selection: Binding(
+                        get: { agentService.permissionLevel },
+                        set: { agentService.permissionLevel = $0 }
+                    )) {
+                        ForEach(AgentCLIService.PermissionLevel.allCases) { level in
+                            Text(level.displayName).tag(level)
+                        }
+                    } label: {
+                        HStack(spacing: 6) {
+                            Text("Agent permissions")
+                            InfoTip("Safe: research and answers only. Standard: can also create and edit files. Full: can additionally run commands and control apps — the agent acts without asking, so use with care.")
+                        }
                     }
                 }
             }

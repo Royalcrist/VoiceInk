@@ -225,11 +225,28 @@ class AIEnhancementService: ObservableObject {
 
         if provider == .localCLI {
             do {
-                let result = try await aiService.enhanceWithLocalCLI(systemPrompt: systemMessage, userPrompt: formattedText)
+                let result = try await aiService.enhanceWithLocalCLI(systemPrompt: LocalCLIService.guardedSystemPrompt(systemMessage), userPrompt: formattedText)
                 return AIEnhancementOutputFilter.filter(result)
             } catch {
                 if let localError = error as? LocalCLIError {
                     throw EnhancementError.customError(localError.errorDescription ?? "An unknown Local CLI error occurred.")
+                } else {
+                    throw EnhancementError.customError(error.localizedDescription)
+                }
+            }
+        }
+
+        if provider == .claudeCode, configuration.mode?.isAgentModeEnabled == true {
+            do {
+                let result = try await AgentCLIService.shared.sendMessage(
+                    text,
+                    appendSystemPrompt: systemMessage,
+                    model: configuration.modelName
+                )
+                return AIEnhancementOutputFilter.filter(result)
+            } catch {
+                if let localError = error as? LocalCLIError {
+                    throw EnhancementError.customError(localError.errorDescription ?? "An unknown agent error occurred.")
                 } else {
                     throw EnhancementError.customError(error.localizedDescription)
                 }
@@ -241,7 +258,7 @@ class AIEnhancementService: ObservableObject {
                 let result = try await aiService.enhanceWithCLIProvider(
                     provider,
                     model: configuration.modelName,
-                    systemPrompt: systemMessage,
+                    systemPrompt: LocalCLIService.guardedSystemPrompt(systemMessage),
                     userPrompt: formattedText
                 )
                 return AIEnhancementOutputFilter.filter(result)

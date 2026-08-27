@@ -174,6 +174,37 @@ final class OnboardingFlowController {
         coordinator.storedStage = OnboardingStage.trust.rawValue
     }
 
+    // "Skip — set everything up for me": installs every starter mode and its prompts
+    // silently, activates the default, and jumps past the practice walkthrough.
+    func skipExperienceInstallingAllModes(
+        isTranscriptionSetupReady: Bool,
+        enhancementService: AIEnhancementService
+    ) {
+        guard coordinator.stage == .experience else { return }
+
+        let allKinds = StarterModeKind.allCases
+        let seedResult = StarterModePromptSeeder.ensurePrompts(
+            for: allKinds,
+            in: enhancementService.customPrompts
+        )
+        if seedResult.didChange {
+            enhancementService.customPrompts = seedResult.prompts
+        }
+
+        StarterModeFactory.install(
+            kinds: allKinds,
+            provider: coordinator.selectedOnboardingProvider,
+            modelName: coordinator.selectedOnboardingProvider.defaultModel,
+            transcriptionModelName: coordinator.selectedOnboardingTranscriptionModelName
+                ?? StarterModeFactory.defaultTranscriptionModelName,
+            isRealtimeTranscriptionEnabled: coordinator.selectedOnboardingTranscriptionUsesRealtime,
+            selectedLanguage: coordinator.selectedOnboardingTranscriptionLanguage
+        )
+
+        activateCleanTranscriptionMode()
+        goToTrustStep(isTranscriptionSetupReady: isTranscriptionSetupReady)
+    }
+
     func advanceExperienceStep(
         isTranscriptionSetupReady: Bool,
         enhancementService: AIEnhancementService
